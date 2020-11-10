@@ -6,4 +6,5 @@ A content addressable network (CAN) is a collection of systems acting as a distr
 
 ## Resources
 https://people.eecs.berkeley.edu/~sylvia/papers/cans.pdf
+
 https://gobyexample.com/
