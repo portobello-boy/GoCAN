@@ -31,44 +31,44 @@ func HashStringToPoint(key string, dim int) Point {
 	return *point
 }
 
-func sub(a, b Point) Point {
+func sub(a, b Point) *Point {
 	p := new(Point)
-	array := make([]float64, dim)
+	array := make([]float64, len(a.Coords))
 
 	for i, val := range a.Coords {
-		array[i] = a.Coords[i] - b.Coords[i]
+		array[i] = val - b.Coords[i]
 	}
 	p.Coords = array
 
 	return p
 }
 
-func add(a, b Point) Point {
+func add(a, b Point) *Point {
 	p := new(Point)
-	array := make([]float64, dim)
+	array := make([]float64, len(a.Coords))
 
 	for i, val := range a.Coords {
-		array[i] = a.Coords[i] + b.Coords[i]
+		array[i] = val + b.Coords[i]
 	}
 	p.Coords = array
 
 	return p
 }
 
-func magnitude(pt Point) float64 {
-	sum := 0
-	for i, val := range pt.Coords {
+func magnitude(pt *Point) float64 {
+	sum := 0.0
+	for _, val := range pt.Coords {
 		sum += val * val
 	}
 	return math.Sqrt(sum)
 }
 
-func scale(pt Point, scalar float64) Point {
+func scale(pt *Point, scalar float64) *Point {
 	p := new(Point)
-	array := make([]float64, dim)
+	array := make([]float64, len(pt.Coords))
 
 	for i, val := range pt.Coords {
-		array[i] = pt.Coords[i] * scalar
+		array[i] = val * scalar
 	}
 	p.Coords = array
 
@@ -79,6 +79,6 @@ func Dist(a, b Point) float64 {
 	return magnitude(sub(a, b))
 }
 
-func Midpoint(a, b Point) Point {
+func Midpoint(a, b Point) *Point {
 	return scale(add(a, b), 0.5)
 }
