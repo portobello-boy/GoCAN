@@ -1,7 +1,12 @@
 package region
 
+import (
+	"errors"
+	"fmt"
+)
+
 type Host struct {
-	Ip   string
+	IP   string
 	Port string
 }
 
@@ -34,13 +39,41 @@ func CreateServer(dim, red int) *Region {
 	region.Dimension = dim
 	region.Redundancy = red
 	region.Space = *r
-	region.Data = *new(map[string]string)
-	region.Neighbors = *new(map[Host]Range)
+	region.Data = make(map[string]string)
+	region.Neighbors = make(map[Host]Range)
 
 	return region
 }
 
-func (r *Region) Locate(pt Point) (bool, Host) {
+func (r *Region) GetData(pt Point, key string) (bool, string, error) {
+	if !r.Space.PointInRange(pt) {
+		return false, "", errors.New("Point not in range")
+	}
+
+	datum, prs := r.Data[key]
+	fmt.Println("Key:", key, "Found:", prs)
+	if prs {
+		return true, datum, nil
+	}
+
+	return false, "", errors.New("Key does not exist in map")
+}
+
+func (r *Region) AddData(pt Point, key, val string) (bool, error) {
+	if !r.Space.PointInRange(pt) {
+		return false, errors.New("Point not in range")
+	}
+
+	_, prs := r.Data[key]
+	if prs {
+		return false, errors.New("Key already exists in map")
+	}
+
+	r.Data[key] = val
+	return true, nil
+}
+
+func (r *Region) Locate(pt Point) (bool, *Host) {
 	for i, val := range pt.Coords {
 		// If any of the point's dimensions are outside our bounds, find a neighbor
 		if val < r.Space.P1.Coords[i] || val > r.Space.P2.Coords[i] {
@@ -53,21 +86,21 @@ func (r *Region) Locate(pt Point) (bool, Host) {
 	return true, nil
 }
 
-func (r *Region) findNearestNeighbor(pt Point) Host {
-	bestDist := 1
-	bestHost := nil
+func (r *Region) findNearestNeighbor(pt Point) *Host {
+	bestDist := 1.0
+	bestHost := new(Host)
 
 	for host, ran := range r.Neighbors {
 		// If the point is in a known neighbor, return them
 		if ran.PointInRange(pt) {
-			return host
+			return &host
 		}
 
 		// Determine which neighbor's midpoint is closest to the point
-		dist := Dist(pt, Midpoint(ran.P1, ran.P2))
+		dist := Dist(pt, *Midpoint(ran.P1, ran.P2))
 		if dist < bestDist {
 			bestDist = dist
-			bestHost = host
+			bestHost = &host
 		}
 	}
 
