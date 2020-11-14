@@ -1,10 +1,10 @@
 package main
 
 import (
-	"flag"
-	"log"
 	"bytes"
 	"encoding/json"
+	"flag"
+	"log"
 	"main/data"
 	"main/region"
 	"net/http"
@@ -27,10 +27,6 @@ func main() {
 	r.Use(middleware.Logger)
 
 	// Endpoints
-	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("welcome"))
-	})
-
 	r.Post("/join", func(w http.ResponseWriter, r *http.Request) {
 		jr := data.ParseJoin(w, r)
 		pt := region.HashStringToPoint(jr.Key, *dimFlag)
@@ -38,11 +34,11 @@ func main() {
 		inReg, neighbor := reg.Locate(pt)
 		if inReg {
 			log.Print("Join request received, splitting region...")
-			
+
 		} else {
-			log.Print("Forwarding join request to ", neighbor.Ip, ":", neighbor.Port)
+			log.Print("Forwarding join request to ", neighbor.IP, ":", neighbor.Port)
 			body, _ := json.Marshal(jr)
-			req, err := http.NewRequest(http.MethodPost, neighbor.Ip + neighbor.Port, bytes.NewBuffer(body))
+			req, err := http.NewRequest(http.MethodPost, neighbor.IP+neighbor.Port, bytes.NewBuffer(body))
 
 			resp, err := c.Do(req)
 			if err != nil {
@@ -51,6 +47,49 @@ func main() {
 
 			log.Print(resp)
 		}
+	})
+
+	// Retrieve data from the CAN
+	r.Get("/{key}", func(w http.ResponseWriter, r *http.Request) {
+		key := chi.URLParam(r, "key")
+		pt := region.HashStringToPoint(key, *dimFlag)
+
+		// Determine if the key is in region, find neighbor if not
+		inReg, neighbor := reg.Locate(pt)
+		if inReg {
+			log.Print("Processing data retrieval request")
+			got, datum, err := reg.GetData(pt, key)
+			w.Header().Add("Content-Type", "application/json")
+
+			// Send success/failure message
+			if err != nil {
+				log.Print(err)
+				dRes := &data.ErrorResponse{
+					Message: err.Error(),
+				}
+				json.NewEncoder(w).Encode(dRes)
+			} else if got {
+				dRes := &data.DataResponse{
+					Key:    key,
+					Data:   datum,
+					Coords: pt.Coords,
+				}
+				json.NewEncoder(w).Encode(dRes)
+			}
+
+		} else { // Forward the get request to the appropriate neighbor
+			log.Print("Forwarding get request to ", neighbor.IP, ":", neighbor.Port)
+			req, err := http.NewRequest(http.MethodGet, neighbor.IP+neighbor.Port+"/"+key, nil)
+
+			resp, err := c.Do(req)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			log.Print(resp)
+		}
+
+		log.Print("Get data request processed")
 	})
 
 	// Add data to CAN
@@ -74,16 +113,16 @@ func main() {
 				json.NewEncoder(w).Encode(dRes)
 			} else if added {
 				dRes := &data.DataResponse{
-					Key: dr.Key,
-					Data: dr.Data,
+					Key:    dr.Key,
+					Data:   dr.Data,
 					Coords: pt.Coords,
 				}
 				json.NewEncoder(w).Encode(dRes)
 			}
-		} else { // Forward the request to the appropriate neighbor
-			log.Print("Forwarding add request to ", neighbor.Ip, ":", neighbor.Port)
+		} else { // Forward the put request to the appropriate neighbor
+			log.Print("Forwarding add request to ", neighbor.IP, ":", neighbor.Port)
 			body, _ := json.Marshal(dr)
-			req, err := http.NewRequest(http.MethodPut, neighbor.Ip + neighbor.Port, bytes.NewBuffer(body))
+			req, err := http.NewRequest(http.MethodPut, neighbor.IP+neighbor.Port, bytes.NewBuffer(body))
 
 			resp, err := c.Do(req)
 			if err != nil {
