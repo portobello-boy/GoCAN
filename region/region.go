@@ -2,10 +2,11 @@ package region
 
 import (
 	"errors"
+	"fmt"
 )
 
 type Host struct {
-	Ip   string
+	IP   string
 	Port string
 }
 
@@ -44,9 +45,23 @@ func CreateServer(dim, red int) *Region {
 	return region
 }
 
+func (r *Region) GetData(pt Point, key string) (bool, string, error) {
+	if !r.Space.PointInRange(pt) {
+		return false, "", errors.New("Point not in range")
+	}
+
+	datum, prs := r.Data[key]
+	fmt.Println("Key:", key, "Found:", prs)
+	if prs {
+		return true, datum, nil
+	}
+
+	return false, "", errors.New("Key does not exist in map")
+}
+
 func (r *Region) AddData(pt Point, key, val string) (bool, error) {
 	if !r.Space.PointInRange(pt) {
-		return false, errors.New("Point not in range!")
+		return false, errors.New("Point not in range")
 	}
 
 	_, prs := r.Data[key]
