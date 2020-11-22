@@ -7,9 +7,10 @@ type DataRequest struct {
 }
 
 type DataResponse struct {
-	Key    string    `json:"key"`
-	Data   string    `json:"data"`
-	Coords []float64 `json:"coords"`
+	Key     string    `json:"key"`
+	Data    string    `json:"data"`
+	Coords  []float64 `json:"coords"`
+	Message string    `json:"message"`
 }
 
 type ErrorResponse struct {

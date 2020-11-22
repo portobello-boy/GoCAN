@@ -73,6 +73,7 @@ func main() {
 					Key:    key,
 					Data:   datum,
 					Coords: pt.Coords,
+					Message: "Data successfully retrieved",
 				}
 				json.NewEncoder(w).Encode(dRes)
 			}
@@ -80,6 +81,50 @@ func main() {
 		} else { // Forward the get request to the appropriate neighbor
 			log.Print("Forwarding get request to ", neighbor.IP, ":", neighbor.Port)
 			req, err := http.NewRequest(http.MethodGet, neighbor.IP+neighbor.Port+"/"+key, nil)
+
+			resp, err := c.Do(req)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			log.Print(resp)
+		}
+
+		log.Print("Get data request processed")
+	})
+
+	// Delete data from CAN
+	r.Delete("/{key}", func(w http.ResponseWriter, r *http.Request) {
+		key := chi.URLParam(r, "key")
+		pt := region.HashStringToPoint(key, *dimFlag)
+
+		// Determine if the key is in region, find neighbor if not
+		inReg, neighbor := reg.Locate(pt)
+		if inReg {
+			log.Print("Processing data delete request")
+			deleted, datum, err := reg.DeleteData(pt, key)
+			w.Header().Add("Content-Type", "application/json")
+
+			// Send success/failure message
+			if err != nil {
+				log.Print(err)
+				dRes := &data.ErrorResponse{
+					Message: err.Error(),
+				}
+				json.NewEncoder(w).Encode(dRes)
+			} else if deleted {
+				dRes := &data.DataResponse{
+					Key:    key,
+					Data:   datum,
+					Coords: pt.Coords,
+					Message: "Data successfully deleted",
+				}
+				json.NewEncoder(w).Encode(dRes)
+			}
+
+		} else { // Forward the get request to the appropriate neighbor
+			log.Print("Forwarding get request to ", neighbor.IP, ":", neighbor.Port)
+			req, err := http.NewRequest(http.MethodDelete, neighbor.IP+neighbor.Port+"/"+key, nil)
 
 			resp, err := c.Do(req)
 			if err != nil {
