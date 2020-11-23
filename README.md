@@ -14,17 +14,18 @@ _r_ - redundancy (backups for data)
 ## Roadmap
 
 - Define HTTP content
-  - GET/PUT/DELETE/PATCH format for client-server communication
+  - ~~GET/PUT/DELETE/PATCH format for client-server communication~~
   - POST format for server-server communication (and if client wants to join server)
-- Create network with one server
-  - Communicate with server, add/retrieve data
+- ~~Create network with one server~~
+  - ~~Communicate with server, add/retrieve data~~
 - Add server to network
-  - Assign point in space
-  - Split region
-  - Reassign data
+  - ~~Assign point in space~~
+  - ~~Split region~~
+  - ~~Reassign data~~
   - Update neighbor table
+  - Create client to receive data and start serving
 - Client interface with network
-  - Client can send requests, server can interpret
+  - ~~Client can send requests, server can interpret~~
   - Route requests to appropriate server
   - Route response back to client
 - Server leaves network

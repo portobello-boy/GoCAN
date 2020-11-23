@@ -1,4 +1,4 @@
-package region
+package server
 
 import (
 	"hash/fnv"
@@ -8,6 +8,13 @@ import (
 
 type Point struct {
 	Coords []float64
+}
+
+func (p *Point) Copy() *Point {
+	newP := new(Point)
+	newP.Coords = make([]float64, len(p.Coords))
+	copy(newP.Coords, p.Coords)
+	return newP
 }
 
 func hash(s string) float64 {

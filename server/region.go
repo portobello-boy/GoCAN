@@ -1,4 +1,4 @@
-package region
+package server
 
 import (
 	"errors"
@@ -6,19 +6,19 @@ import (
 )
 
 type Host struct {
-	IP   string
-	Port string
+	IP   string `json:"ip"`
+	Port string `json:"port"`
 }
 
 type Region struct {
-	Dimension  int
-	Redundancy int
-	Space      Range
-	Data       map[string]string
-	Neighbors  map[Host]Range
+	Dimension  int               `json:"dimension"`
+	Redundancy int               `json:"redundancy"`
+	Space      Range             `json:"range"`
+	Data       map[string]string `json:"data"`
+	Neighbors  map[Host]Range    `json:"neighbords"`
 }
 
-func CreateServer(dim, red int) *Region {
+func CreateRegion(dim, red int) *Region {
 	// Create bounding points
 	p1 := new(Point)
 	p2 := new(Point)
@@ -52,7 +52,7 @@ func (r *Region) DeleteData(pt Point, key string) (bool, string, error) {
 
 	datum, prs := r.Data[key]
 	delete(r.Data, key)
-	log.Print("Key:", key, "Found:", prs)
+	log.Print("Key:", key, ", Found:", prs)
 	if prs {
 		return true, datum, nil
 	}
@@ -66,7 +66,7 @@ func (r *Region) GetData(pt Point, key string) (bool, string, error) {
 	}
 
 	datum, prs := r.Data[key]
-	log.Print("Key:", key, "Found:", prs)
+	log.Print("Key:", key, ", Found:", prs)
 	if prs {
 		return true, datum, nil
 	}
@@ -82,6 +82,20 @@ func (r *Region) AddData(pt Point, key, val string) (bool, error) {
 	_, prs := r.Data[key]
 	if prs {
 		return false, errors.New("Key already exists in map")
+	}
+
+	r.Data[key] = val
+	return true, nil
+}
+
+func (r *Region) ModifyData(pt Point, key, val string) (bool, error) {
+	if !r.Space.PointInRange(pt) {
+		return false, errors.New("Point not in range")
+	}
+
+	_, prs := r.Data[key]
+	if !prs {
+		return false, errors.New("Key not found in map, cannot modify data")
 	}
 
 	r.Data[key] = val
@@ -122,6 +136,39 @@ func (r *Region) findNearestNeighbor(pt Point) *Host {
 	return bestHost
 }
 
-// func (r *Region) Split(w http.ResponseWriter, r *http.Request) {
+func (r *Region) AddNeighbor(hostname, port string, rng Range) {
+	host := Host{
+		IP:   hostname,
+		Port: port,
+	}
+	r.Neighbors[host] = rng
+}
 
-// }
+func (r *Region) Split() *Region {
+	newRange := r.Space.Split()
+
+	newReg := new(Region)
+	newReg.Dimension = r.Dimension
+	newReg.Redundancy = r.Redundancy
+	newReg.Space = *newRange
+	newReg.Data = make(map[string]string)
+	newReg.Neighbors = make(map[Host]Range)
+
+	for key, val := range r.Data {
+		if pt := HashStringToPoint(key, r.Dimension); newRange.PointInRange(pt) {
+			newReg.Data[key] = val
+			delete(r.Data, key)
+		}
+	}
+
+	for host, rng := range r.Neighbors {
+		if newRange.Neighbors(&rng) {
+			newReg.Neighbors[host] = rng
+		}
+		if !r.Space.Neighbors(&rng) {
+			delete(r.Neighbors, host)
+		}
+	}
+
+	return newReg
+}
