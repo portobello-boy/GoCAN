@@ -34,6 +34,9 @@ _r_ - redundancy (backups for data)
   - Hand data to neighbor
   - Update neighbor table
   - Exit network
+- Map network for drawing
+  - Figure out flood fill
+  - Build a client (maybe a web client)
 
 ## Resources
 

@@ -13,10 +13,16 @@ import (
 func main() {
 	dimFlag := flag.Int("d", 2, "Number of dimensions for this CAN server")
 	redFlag := flag.Int("r", 1, "Copies of data inserted")
+	port := flag.String("p", "3000", "Port to listen on")
+	join := flag.String("join", "", "IP:Port of existing server to join")
+
 	flag.Parse()
 
 	// Create region
 	serv := server.CreateServer(*dimFlag, *redFlag)
+	if *join != "" {
+		serv.SendJoin(*join, "")
+	}
 
 	// Configure the router and client
 	r := chi.NewRouter()
@@ -39,6 +45,11 @@ func main() {
 
 	r.Get("/debug", serv.Debug)
 
-	log.Print("Server listening on port 3000...")
-	http.ListenAndServe(":3000", r)
+	r.Options("/*", serv.Options)
+	r.Options("/join", serv.JoinOptions)
+	r.Options("/data", serv.DataOptions)
+	r.Options("/debug", serv.DebugOptions)
+
+	log.Print("Server listening on port " + *port + "...")
+	http.ListenAndServe(":"+*port, r)
 }

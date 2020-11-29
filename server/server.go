@@ -54,7 +54,7 @@ func (s *Server) PutData(w http.ResponseWriter, r *http.Request) {
 	} else { // Forward the put request to the appropriate neighbor
 		log.Print("Forwarding add request to ", neighbor.IP, ":", neighbor.Port)
 		body, _ := json.Marshal(dr)
-		req, err := http.NewRequest(http.MethodPut, neighbor.IP+neighbor.Port, bytes.NewBuffer(body))
+		req, err := http.NewRequest(http.MethodPut, "http://"+neighbor.IP+":"+neighbor.Port, bytes.NewBuffer(body))
 
 		resp, err := s.C.Do(req)
 		if err != nil {
@@ -97,7 +97,7 @@ func (s *Server) GetData(w http.ResponseWriter, r *http.Request) {
 
 	} else { // Forward the get request to the appropriate neighbor
 		log.Print("Forwarding get request to ", neighbor.IP, ":", neighbor.Port)
-		req, err := http.NewRequest(http.MethodGet, neighbor.IP+neighbor.Port+"/"+key, nil)
+		req, err := http.NewRequest(http.MethodGet, "http://"+neighbor.IP+":"+neighbor.Port+"/"+key, nil)
 
 		resp, err := s.C.Do(req)
 		if err != nil {
@@ -140,7 +140,7 @@ func (s *Server) DeleteData(w http.ResponseWriter, r *http.Request) {
 
 	} else { // Forward the get request to the appropriate neighbor
 		log.Print("Forwarding get request to ", neighbor.IP, ":", neighbor.Port)
-		req, err := http.NewRequest(http.MethodDelete, neighbor.IP+neighbor.Port+"/"+key, nil)
+		req, err := http.NewRequest(http.MethodDelete, "http://"+neighbor.IP+":"+neighbor.Port+"/"+key, nil)
 
 		resp, err := s.C.Do(req)
 		if err != nil {
@@ -183,7 +183,7 @@ func (s *Server) PatchData(w http.ResponseWriter, r *http.Request) {
 	} else { // Forward the put request to the appropriate neighbor
 		log.Print("Forwarding add request to ", neighbor.IP, ":", neighbor.Port)
 		body, _ := json.Marshal(dr)
-		req, err := http.NewRequest(http.MethodPut, neighbor.IP+neighbor.Port, bytes.NewBuffer(body))
+		req, err := http.NewRequest(http.MethodPut, "http://"+neighbor.IP+":"+neighbor.Port, bytes.NewBuffer(body))
 
 		resp, err := s.C.Do(req)
 		if err != nil {
@@ -232,7 +232,7 @@ func (s *Server) Join(w http.ResponseWriter, r *http.Request) {
 	} else {
 		log.Print("Forwarding join request to ", neighbor.IP, ":", neighbor.Port)
 		body, _ := json.Marshal(jr)
-		req, err := http.NewRequest(http.MethodPost, neighbor.IP+neighbor.Port, bytes.NewBuffer(body))
+		req, err := http.NewRequest(http.MethodPost, "http://"+neighbor.IP+":"+neighbor.Port, bytes.NewBuffer(body))
 
 		resp, err := s.C.Do(req)
 		if err != nil {
@@ -241,4 +241,25 @@ func (s *Server) Join(w http.ResponseWriter, r *http.Request) {
 
 		log.Print(resp)
 	}
+}
+
+func (s *Server) SendJoin(host string, key string) {
+	// 	log.Print("Attempting to join network at " + host)
+	// 	jr := &data.JoinRequest{
+	// 		Key: key,
+	// 		Host: ""
+	// 	}
+	// 	body, _ := json.Marshal(jr)
+	// 	req, err := http.NewRequest(http.MethodPost, "http://"+host, bytes.NewBuffer(body))
+}
+
+func (s *Server) Options(w http.ResponseWriter, r *http.Request) {}
+func (s *Server) JoinOptions(w http.ResponseWriter, r *http.Request) {
+	w.Header().Add("Allow", "OPTIONS, POST")
+}
+func (s *Server) DataOptions(w http.ResponseWriter, r *http.Request) {
+	w.Header().Add("Allow", "OPTIONS, GET, DELETE, PUT, PATCH")
+}
+func (s *Server) DebugOptions(w http.ResponseWriter, r *http.Request) {
+	w.Header().Add("Allow", "OPTIONS, GET")
 }
