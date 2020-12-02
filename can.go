@@ -1,10 +1,13 @@
 package main
 
 import (
+	"bufio"
 	"flag"
+	"fmt"
 	"log"
 	"main/server"
 	"net/http"
+	"os"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
@@ -21,7 +24,10 @@ func main() {
 	// Create region
 	serv := server.CreateServer(*dimFlag, *redFlag)
 	if *join != "" {
-		serv.SendJoin(*join, "")
+		fmt.Print("What key to use to join server? ")
+		text, _ := bufio.NewReader(os.Stdin).ReadString('\n')
+		serv.SendJoin(*join, text)
+		log.Print(serv.Reg)
 	}
 
 	// Configure the router and client

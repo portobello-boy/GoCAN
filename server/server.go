@@ -244,13 +244,28 @@ func (s *Server) Join(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) SendJoin(host string, key string) {
-	// 	log.Print("Attempting to join network at " + host)
-	// 	jr := &data.JoinRequest{
-	// 		Key: key,
-	// 		Host: ""
-	// 	}
-	// 	body, _ := json.Marshal(jr)
-	// 	req, err := http.NewRequest(http.MethodPost, "http://"+host, bytes.NewBuffer(body))
+	log.Print("Attempting to join network at " + host)
+	jr := &data.JoinRequest{
+		Key:  key,
+		Host: "",
+	}
+	body, _ := json.Marshal(jr)
+	req, err := http.NewRequest(http.MethodPost, "http://"+host+"/join", bytes.NewBuffer(body))
+
+	resp, err := s.C.Do(req)
+	log.Print("Received join response containing new region")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	dRes := data.DebugResponse{}
+	json.NewDecoder(resp.Body).Decode(&dRes)
+
+	s.Reg.Dimension = dRes.Dimension
+	s.Reg.Redundancy = dRes.Redundancy
+	s.Reg.Data = dRes.Data
+	s.Reg.Space.P1.Coords = dRes.Range.P1.Coords
+	s.Reg.Space.P2.Coords = dRes.Range.P2.Coords
 }
 
 func (s *Server) Options(w http.ResponseWriter, r *http.Request) {}

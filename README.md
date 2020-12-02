@@ -9,7 +9,9 @@ A content addressable network (CAN) is a collection of systems acting as a distr
 ## Parameters
 
 _d_ - dimensions \
-_r_ - redundancy (backups for data)
+_r_ - redundancy (backups for data) \
+_p_ - listening port \
+_join_ - server host:port to join existing CAN
 
 ## Roadmap
 
