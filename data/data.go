@@ -29,3 +29,12 @@ func ParseJoin(w http.ResponseWriter, r *http.Request) JoinRequest {
 
 	return joinReq
 }
+
+func ParseNeighbor(w http.ResponseWriter, r *http.Request) NeighborRequest {
+	var nr NeighborRequest
+	err := json.NewDecoder(r.Body).Decode(&nr)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+	return nr
+}

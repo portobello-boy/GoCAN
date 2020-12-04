@@ -3,6 +3,8 @@ package server
 import (
 	"errors"
 	"log"
+	"main/data"
+	"strings"
 )
 
 type Host struct {
@@ -45,6 +47,18 @@ func CreateRegion(dim, red int) *Region {
 	return region
 }
 
+func UnpackNeighbors(neighMap map[string]data.RangeResponse) map[Host]Range {
+	hostMap := make(map[Host]Range)
+	for hst, rng := range neighMap {
+		hostInfo := strings.Split(hst, ":")
+		host := new(Host)
+		host.IP = hostInfo[0]
+		host.Port = hostInfo[1]
+		hostMap[*host] = *UnpackRange(rng)
+	}
+	return hostMap
+}
+
 func (r *Region) DeleteData(pt Point, key string) (bool, string, error) {
 	if !r.Space.PointInRange(pt) {
 		return false, "", errors.New("Point not in range")
@@ -66,7 +80,7 @@ func (r *Region) GetData(pt Point, key string) (bool, string, error) {
 	}
 
 	datum, prs := r.Data[key]
-	log.Print("Key:", key, ", Found:", prs)
+	log.Print("Key:", key, ", Data:", datum)
 	if prs {
 		return true, datum, nil
 	}
@@ -115,6 +129,14 @@ func (r *Region) Locate(pt Point) (bool, *Host) {
 	return true, nil
 }
 
+func (r *Region) GetNeighborResponse() map[string]data.RangeResponse {
+	nr := make(map[string]data.RangeResponse)
+	for host, rng := range r.Neighbors {
+		nr[host.IP+":"+host.Port] = *(rng.GetRangeResponse())
+	}
+	return nr
+}
+
 func (r *Region) findNearestNeighbor(pt Point) *Host {
 	bestDist := 1.0
 	bestHost := new(Host)
@@ -136,15 +158,23 @@ func (r *Region) findNearestNeighbor(pt Point) *Host {
 	return bestHost
 }
 
-func (r *Region) AddNeighbor(hostname, port string, rng Range) {
+func (r *Region) AddNeighbor(hostname, port string, rng Range) error {
 	host := Host{
 		IP:   hostname,
 		Port: port,
 	}
+
+	_, prs := r.Neighbors[host]
+	if prs {
+		return errors.New("Neighbor already exists in map")
+	}
+
+	log.Print("Neighbor added to map")
 	r.Neighbors[host] = rng
+	return nil
 }
 
-func (r *Region) Split() *Region {
+func (r *Region) Split() (*Region, []Host) {
 	newRange := r.Space.Split()
 
 	newReg := new(Region)
@@ -161,14 +191,17 @@ func (r *Region) Split() *Region {
 		}
 	}
 
+	delHosts := make([]Host, 0)
+
 	for host, rng := range r.Neighbors {
 		if newRange.Neighbors(&rng) {
 			newReg.Neighbors[host] = rng
 		}
 		if !r.Space.Neighbors(&rng) {
+			delHosts = append(delHosts, host)
 			delete(r.Neighbors, host)
 		}
 	}
 
-	return newReg
+	return newReg, delHosts
 }

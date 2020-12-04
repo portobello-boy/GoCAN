@@ -23,10 +23,21 @@ type DataResponse struct {
 }
 
 type DebugResponse struct {
-	Dimension  int               `json:"dimension"`
-	Redundancy int               `json:"redundancy"`
-	Range      RangeResponse     `json:"range"`
-	Data       map[string]string `json:"data"`
+	Dimension  int                      `json:"dimension"`
+	Redundancy int                      `json:"redundancy"`
+	Range      RangeResponse            `json:"range"`
+	Data       map[string]string        `json:"data"`
+	Neighbors  map[string]RangeResponse `json:"neighbors"`
+}
+
+type JoinResponse struct {
+	Dimension  int                      `json:"dimension"`
+	Redundancy int                      `json:"redundancy"`
+	Range      RangeResponse            `json:"range"`
+	Data       map[string]string        `json:"data"`
+	Neighbors  map[string]RangeResponse `json:"neighbors"`
+	JoinedHst  string                   `json:"joinedHst"`
+	JoinedRng  RangeResponse            `json:"joinedRng"`
 }
 
 type ErrorResponse struct {
@@ -34,6 +45,13 @@ type ErrorResponse struct {
 }
 
 type JoinRequest struct {
-	Key  string `json:"key"`
-	Host string `json:"host"`
+	Key       string `json:"key"`
+	Host      string `json:"host"`
+	Port      string `json:"port"`
+	JoinedHst string `json:"joinedHst"`
+}
+
+type NeighborRequest struct {
+	Port  string        `json:"port"`
+	Range RangeResponse `json:"range"`
 }

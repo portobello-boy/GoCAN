@@ -38,7 +38,7 @@ func HashStringToPoint(key string, dim int) Point {
 	return *point
 }
 
-func sub(a, b Point) *Point {
+func (a *Point) Sub(b Point) *Point {
 	p := new(Point)
 	array := make([]float64, len(a.Coords))
 
@@ -50,7 +50,7 @@ func sub(a, b Point) *Point {
 	return p
 }
 
-func add(a, b Point) *Point {
+func (a *Point) Add(b Point) *Point {
 	p := new(Point)
 	array := make([]float64, len(a.Coords))
 
@@ -83,9 +83,9 @@ func scale(pt *Point, scalar float64) *Point {
 }
 
 func Dist(a, b Point) float64 {
-	return magnitude(sub(a, b))
+	return magnitude(a.Sub(b))
 }
 
 func Midpoint(a, b Point) *Point {
-	return scale(add(a, b), 0.5)
+	return scale(a.Add(b), 0.5)
 }

@@ -22,34 +22,42 @@ func main() {
 	flag.Parse()
 
 	// Create region
-	serv := server.CreateServer(*dimFlag, *redFlag)
+	serv := server.CreateServer(*dimFlag, *redFlag, *port)
 	if *join != "" {
 		fmt.Print("What key to use to join server? ")
 		text, _ := bufio.NewReader(os.Stdin).ReadString('\n')
-		serv.SendJoin(*join, text)
-		log.Print(serv.Reg)
+		serv.SendJoin(*join, *port, text)
+		// log.Print(serv.Reg)
 	}
 
 	// Configure the router and client
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
+	r.Use(middleware.RealIP)
 
 	// Endpoints
-	r.Post("/join", serv.Join)
+	r.Route("/", func(r chi.Router) {
+		// Join a CAN
+		r.Post("/join", serv.Join)
 
-	// Retrieve data from the CAN
-	r.Get("/data/{key}", serv.GetData)
+		// Get info from CAN Server
+		r.Get("/debug", serv.Debug)
 
-	// Delete data from CAN
-	r.Delete("/data/{key}", serv.DeleteData)
+		// Interface with CAN Data
+		r.Route("/data", func(r chi.Router) {
+			r.Put("/", serv.PutData)            // Add data
+			r.Patch("/", serv.PatchData)        // Update Data
+			r.Get("/{key}", serv.GetData)       // Retrieve Data
+			r.Delete("/{key}", serv.DeleteData) // Delete Data
+		})
 
-	// Add data to CAN
-	r.Put("/data", serv.PutData)
-
-	// Update data in CAN
-	r.Patch("/data", serv.PatchData)
-
-	r.Get("/debug", serv.Debug)
+		// Interface with CAN Neighbors
+		r.Route("/neighbors", func(r chi.Router) {
+			r.Put("/", serv.AddNeighbor)       // Add Neighbor
+			r.Patch("/", serv.PatchNeighbor)   // Update Neighbor
+			r.Delete("/", serv.DeleteNeighbor) // Delete Neighbor
+		})
+	})
 
 	r.Options("/*", serv.Options)
 	r.Options("/join", serv.JoinOptions)
