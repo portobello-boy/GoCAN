@@ -15,20 +15,20 @@ _join_ - server host:port to join existing CAN
 
 ## Roadmap
 
-- Define HTTP content
+- ~~Define HTTP content~~
   - ~~GET/PUT/DELETE/PATCH format for client-server communication~~
   - ~~POST format for server-server communication (and if client wants to join server)~~
 - ~~Create network with one server~~
   - ~~Communicate with server, add/retrieve data~~
-- Add server to network
+- ~~Add server to network~~
   - ~~Assign point in space~~
   - ~~Split region~~
   - ~~Reassign data~~
-  - Update neighbor table
+  - ~~Update neighbor table~~
   - ~~Create client to receive data and start serving~~
-- Client interface with network
+- ~~Client interface with network~~
   - ~~Client can send requests, server can interpret~~
-  - Route requests to appropriate server
+  - ~~Route requests to appropriate server~~
   - ~~Route response back to client~~
 - Server leaves network
   - Determine neighbor to hand data
