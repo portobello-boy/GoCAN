@@ -43,8 +43,7 @@ type ErrorResponse struct {
 }
 
 type JoinRequest struct {
-	Key  string `json:"key"`
-	Port string `json:"port"`
+	Key string `json:"key"`
 }
 
 type NeighborRequest struct {

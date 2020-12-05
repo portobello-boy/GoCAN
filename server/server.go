@@ -98,8 +98,7 @@ func (s *Server) SendJoin(host, port, key string) {
 	// Send a join request to an existing CAN server
 	log.Print("Attempting to join network at " + host)
 	jr := &data.JoinRequest{
-		Key:  key,
-		Port: port,
+		Key: key,
 	}
 	body, _ := json.Marshal(jr)
 	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("http://%s/join", host), bytes.NewBuffer(body))
