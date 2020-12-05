@@ -78,11 +78,6 @@ func (s *Server) Join(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		// Add the new server as our neighbor
-		joinerHost, _ := getHostFromRemoteAddr(jr.Host)
-		s.Reg.AddNeighbor(joinerHost, jr.Port, newReg.Space)
-		log.Print(joinerHost, jr.Port, s.Reg.Neighbors)
-
 	} else {
 		// Forward join request to best neighbor
 		log.Print("Forwarding join request to ", neighbor.IP, ":", neighbor.Port)

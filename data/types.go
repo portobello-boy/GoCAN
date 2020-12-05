@@ -44,7 +44,6 @@ type ErrorResponse struct {
 
 type JoinRequest struct {
 	Key  string `json:"key"`
-	Host string `json:"host"`
 	Port string `json:"port"`
 }
 

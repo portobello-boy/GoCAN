@@ -23,10 +23,6 @@ func ParseJoin(w http.ResponseWriter, r *http.Request) JoinRequest {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
-	if joinReq.Host == "" {
-		joinReq.Host = r.RemoteAddr
-	}
-
 	return joinReq
 }
 
