@@ -40,7 +40,7 @@ func (s *Server) Join(w http.ResponseWriter, r *http.Request) {
 	inReg, neighbor := s.Reg.Locate(pt)
 	if inReg {
 		log.Print("Join request received, splitting region...")
-		newReg, delHosts := s.Reg.Split()
+		newReg, delHosts := s.Reg.Split(r.Host)
 
 		// Encode the response to JSON body and send it
 		jRes := &data.JoinResponse{
@@ -49,8 +49,6 @@ func (s *Server) Join(w http.ResponseWriter, r *http.Request) {
 			Range:      *(newReg.Space.GetRangeResponse()),
 			Data:       newReg.Data,
 			Neighbors:  newReg.GetNeighborResponse(),
-			JoinedRng:  *(s.Reg.Space.GetRangeResponse()),
-			JoinedHst:  jr.JoinedHst,
 		}
 		json.NewEncoder(w).Encode(jRes)
 
@@ -62,6 +60,7 @@ func (s *Server) Join(w http.ResponseWriter, r *http.Request) {
 
 		body, _ := json.Marshal(neighborReq)
 
+		// Request existing neighbors to update my range in their map
 		for hst, _ := range s.Reg.Neighbors {
 			req, _ := http.NewRequest(http.MethodPatch, fmt.Sprintf("http://%s:%s/neighbors", hst.IP, hst.Port), bytes.NewBuffer(body))
 			_, err := s.C.Do(req)
@@ -70,7 +69,7 @@ func (s *Server) Join(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		// Delete neighbors that are no longer adjacent
+		// Request neighbors that are no longer adjacent to delete me
 		for _, hst := range delHosts {
 			req, _ := http.NewRequest(http.MethodDelete, fmt.Sprintf("http://%s:%s/neighbors?port=%s", hst.IP, hst.Port, s.Port), bytes.NewBuffer(body))
 			_, err := s.C.Do(req)
@@ -80,14 +79,13 @@ func (s *Server) Join(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Add the new server as our neighbor
-		// TODO: This only works if connecting directly to the splitting region, this won't work for routing
 		joinerHost, _ := getHostFromRemoteAddr(jr.Host)
 		s.Reg.AddNeighbor(joinerHost, jr.Port, newReg.Space)
 		log.Print(joinerHost, jr.Port, s.Reg.Neighbors)
 
 	} else {
+		// Forward join request to best neighbor
 		log.Print("Forwarding join request to ", neighbor.IP, ":", neighbor.Port)
-		jr.JoinedHst = neighbor.IP + ":" + neighbor.Port
 		body, _ := json.Marshal(jr)
 		req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("http://%s:%s/join", neighbor.IP, neighbor.Port), bytes.NewBuffer(body))
 
@@ -102,11 +100,11 @@ func (s *Server) Join(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) SendJoin(host, port, key string) {
+	// Send a join request to an existing CAN server
 	log.Print("Attempting to join network at " + host)
 	jr := &data.JoinRequest{
-		Key:       key,
-		Port:      port,
-		JoinedHst: host,
+		Key:  key,
+		Port: port,
 	}
 	body, _ := json.Marshal(jr)
 	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("http://%s/join", host), bytes.NewBuffer(body))
@@ -117,6 +115,7 @@ func (s *Server) SendJoin(host, port, key string) {
 		log.Fatal(err)
 	}
 
+	// Handle response
 	jRes := data.JoinResponse{}
 	json.NewDecoder(resp.Body).Decode(&jRes)
 
@@ -127,9 +126,6 @@ func (s *Server) SendJoin(host, port, key string) {
 	s.Reg.Space.P2.Coords = jRes.Range.P2.Coords
 	s.Reg.Neighbors = UnpackNeighbors(jRes.Neighbors)
 
-	joinerInfo := strings.Split(jRes.JoinedHst, ":")
-	s.Reg.AddNeighbor(joinerInfo[0], joinerInfo[1], *UnpackRange(jRes.JoinedRng))
-
 	// Update our neighbors with our new region
 	neighborReq := &data.NeighborRequest{
 		Port:  s.Port,
@@ -138,7 +134,8 @@ func (s *Server) SendJoin(host, port, key string) {
 
 	body, _ = json.Marshal(neighborReq)
 
-	for hst, _ := range s.Reg.Neighbors {
+	// Tell our new neighbors to add us
+	for hst := range s.Reg.Neighbors {
 		req, _ := http.NewRequest(http.MethodPut, fmt.Sprintf("http://%s:%s/neighbors", hst.IP, hst.Port), bytes.NewBuffer(body))
 		_, err := s.C.Do(req)
 		if err != nil {

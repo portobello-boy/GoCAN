@@ -36,8 +36,6 @@ type JoinResponse struct {
 	Range      RangeResponse            `json:"range"`
 	Data       map[string]string        `json:"data"`
 	Neighbors  map[string]RangeResponse `json:"neighbors"`
-	JoinedHst  string                   `json:"joinedHst"`
-	JoinedRng  RangeResponse            `json:"joinedRng"`
 }
 
 type ErrorResponse struct {
@@ -45,10 +43,9 @@ type ErrorResponse struct {
 }
 
 type JoinRequest struct {
-	Key       string `json:"key"`
-	Host      string `json:"host"`
-	Port      string `json:"port"`
-	JoinedHst string `json:"joinedHst"`
+	Key  string `json:"key"`
+	Host string `json:"host"`
+	Port string `json:"port"`
 }
 
 type NeighborRequest struct {

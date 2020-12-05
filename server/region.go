@@ -174,7 +174,7 @@ func (r *Region) AddNeighbor(hostname, port string, rng Range) error {
 	return nil
 }
 
-func (r *Region) Split() (*Region, []Host) {
+func (r *Region) Split(myHost string) (*Region, []Host) {
 	newRange := r.Space.Split()
 
 	newReg := new(Region)
@@ -192,6 +192,9 @@ func (r *Region) Split() (*Region, []Host) {
 	}
 
 	delHosts := make([]Host, 0)
+
+	myHostSplit := strings.Split(myHost, ":")
+	newReg.AddNeighbor(myHostSplit[0], myHostSplit[1], r.Space)
 
 	for host, rng := range r.Neighbors {
 		if newRange.Neighbors(&rng) {
