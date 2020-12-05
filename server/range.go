@@ -1,7 +1,10 @@
 package server
 
 import (
+	"fmt"
 	"main/data"
+	"math"
+	"strconv"
 )
 
 type Range struct {
@@ -50,8 +53,63 @@ func (r *Range) Split() *Range {
 	return newRange
 }
 
-func (r *Range) Neighbors(other *Range) bool {
+func StringPadZero(s string, len int) string {
+	return fmt.Sprintf("%0"+strconv.Itoa(len)+"s", s)
+}
+
+func (r *Range) GetCorners() []Point {
+	dim := r.Dimensions()
+	numDim := len(dim.Coords)
+	perms := []string{}
+	for i := 0; i < int(math.Pow(2, float64(numDim))); i++ {
+		perms = append(perms, StringPadZero(strconv.FormatInt(int64(i), 2), numDim))
+	}
+
+	corners := []Point{}
+	for _, perm := range perms {
+		pt := *new(Point)
+		for i, char := range perm {
+			if char == '0' {
+				pt.Coords = append(pt.Coords, r.P1.Coords[i])
+			} else {
+				pt.Coords = append(pt.Coords, r.P2.Coords[i])
+			}
+		}
+		corners = append(corners, pt)
+	}
+	return corners
+}
+
+func (r *Range) PointInside(pt *Point) bool {
+	for i := range r.P1.Coords {
+		if !(r.P1.Coords[i] <= pt.Coords[i] && pt.Coords[i] <= r.P2.Coords[i]) {
+			// log.Print(pt, " is not inside ", r)
+			return false
+		}
+		// log.Print(pt, " is inside ", r)
+	}
 	return true
+}
+
+// DirectionalBorder - r is the "smaller" volume, other is the "larger" volume
+func (r *Range) DirectionalBorder(other *Range) bool {
+	contacts := 0
+	dim := len(r.Dimensions().Coords)
+	minContactPoints := int(math.Pow(2, float64(dim-1)))
+
+	for _, point := range r.GetCorners() {
+		if other.PointInside(&point) {
+			contacts++
+		}
+		if contacts >= minContactPoints {
+			return true
+		}
+	}
+	return false
+}
+
+func (r *Range) Neighbors(other *Range) bool {
+	return r.DirectionalBorder(other) || other.DirectionalBorder(r)
 }
 
 func UnpackRange(rr data.RangeResponse) *Range {
