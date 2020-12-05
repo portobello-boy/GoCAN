@@ -55,3 +55,7 @@ type NeighborRequest struct {
 	Port  string        `json:"port"`
 	Range RangeResponse `json:"range"`
 }
+
+type TraceResponse struct {
+	Route []string `json:"Route"`
+}

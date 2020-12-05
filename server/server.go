@@ -160,6 +160,41 @@ func (s *Server) Debug(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(dRes)
 }
 
+func (s *Server) RouteTrace(w http.ResponseWriter, r *http.Request) {
+	w.Header().Add("Content-Type", "application/json")
+	dr := data.ParseData(w, r)
+	pt := HashStringToPoint(dr.Key, s.Reg.Dimension)
+
+	// Determine if the key is in region, find neighbor if not
+	inReg, neighbor := s.Reg.Locate(pt)
+	if inReg {
+		log.Print("Processing trace request")
+		log.Print("Responding with host: ", r.Host)
+		tRes := &data.TraceResponse{
+			Route: []string{"dest " + r.Host},
+		}
+		json.NewEncoder(w).Encode(tRes)
+	} else { // Forward the trace request to the appropriate neighbor
+		log.Print("Forwarding trace request to ", neighbor.IP, ":", neighbor.Port)
+		body, _ := json.Marshal(dr)
+		req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("http://%s:%s/trace", neighbor.IP, neighbor.Port), bytes.NewBuffer(body))
+
+		resp, err := s.C.Do(req)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		tr := data.ParseTrace(w, resp)
+		tr.Route = append(tr.Route, "step "+r.Host)
+
+		// log.Print(resp)
+		frwdResponse, _ := json.Marshal(tr)
+		w.Write(frwdResponse)
+	}
+
+	log.Print("Trace request processed")
+}
+
 func (s *Server) PutData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "application/json")
 	dr := data.ParseData(w, r)

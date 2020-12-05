@@ -42,6 +42,7 @@ func main() {
 
 		// Get info from CAN Server
 		r.Get("/debug", serv.Debug)
+		r.Post("/trace", serv.RouteTrace)
 
 		// Interface with CAN Data
 		r.Route("/data", func(r chi.Router) {

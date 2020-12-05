@@ -38,3 +38,12 @@ func ParseNeighbor(w http.ResponseWriter, r *http.Request) NeighborRequest {
 	}
 	return nr
 }
+
+func ParseTrace(w http.ResponseWriter, r *http.Response) TraceResponse {
+	var tr TraceResponse
+	err := json.NewDecoder(r.Body).Decode(&tr)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+	return tr
+}
