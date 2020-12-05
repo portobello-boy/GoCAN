@@ -148,7 +148,7 @@ func (r *Region) findNearestNeighbor(pt Point) *Host {
 		}
 
 		// Determine which neighbor's midpoint is closest to the point
-		dist := Dist(pt, *Midpoint(ran.P1, ran.P2))
+		dist := pt.Dist(*ran.P1.Midpoint(ran.P2))
 		if dist < bestDist {
 			bestDist = dist
 			bestHost = &host

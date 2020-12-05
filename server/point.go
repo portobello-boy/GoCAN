@@ -82,10 +82,10 @@ func (pt *Point) Scale(scalar float64) *Point {
 	return p
 }
 
-func (a Point) Dist(b Point) float64 {
+func (a *Point) Dist(b Point) float64 {
 	return a.Sub(b).Magnitude()
 }
 
-func (a Point) Midpoint(b Point) *Point {
+func (a *Point) Midpoint(b Point) *Point {
 	return a.Add(b).Scale(0.5)
 }
