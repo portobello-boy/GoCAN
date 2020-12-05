@@ -18,15 +18,19 @@ func main() {
 	redFlag := flag.Int("r", 1, "Copies of data inserted")
 	port := flag.String("p", "3000", "Port to listen on")
 	join := flag.String("join", "", "IP:Port of existing server to join")
+	joinKey := flag.String("key", "", "Key for joining a CAN")
 
 	flag.Parse()
 
 	// Create region
 	serv := server.CreateServer(*dimFlag, *redFlag, *port)
 	if *join != "" {
-		fmt.Print("What key to use to join server? ")
-		text, _ := bufio.NewReader(os.Stdin).ReadString('\n')
-		serv.SendJoin(*join, *port, text)
+		key := *joinKey
+		if key == "" {
+			fmt.Print("What key to use to join server? ")
+			key, _ = bufio.NewReader(os.Stdin).ReadString('\n')
+		}
+		serv.SendJoin(*join, *port, key)
 		// log.Print(serv.Reg)
 	}
 

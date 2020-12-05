@@ -16,12 +16,14 @@ import (
 	"github.com/go-chi/chi"
 )
 
+// Server - Object containing a region, HTTP client, and listening port
 type Server struct {
 	Reg  *Region
 	C    *http.Client
 	Port string
 }
 
+// CreateServer - Create and return a server object
 func CreateServer(dim, red int, port string) *Server {
 	serv := new(Server)
 	serv.Reg = CreateRegion(dim, red)
@@ -30,6 +32,7 @@ func CreateServer(dim, red int, port string) *Server {
 	return serv
 }
 
+// Join - Parse JoinRequest from server attempting to join CAN
 func (s *Server) Join(w http.ResponseWriter, r *http.Request) {
 	// Add JSON headers and parse body to appropriate type
 	w.Header().Add("Content-Type", "application/json")
@@ -94,6 +97,7 @@ func (s *Server) Join(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// SendJoin - Send a JoinRequest to entry point in CAN
 func (s *Server) SendJoin(host, port, key string) {
 	// Send a join request to an existing CAN server
 	log.Print("Attempting to join network at " + host)
@@ -138,6 +142,7 @@ func (s *Server) SendJoin(host, port, key string) {
 	}
 }
 
+// Debug - Send a DebugResponse with information about this server in the CAN
 func (s *Server) Debug(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "application/json")
 
@@ -151,6 +156,7 @@ func (s *Server) Debug(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(dRes)
 }
 
+// RouteTrace - Respond with CAN server path from entry to key location
 func (s *Server) RouteTrace(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "application/json")
 	dr := data.ParseData(w, r)
@@ -186,6 +192,7 @@ func (s *Server) RouteTrace(w http.ResponseWriter, r *http.Request) {
 	log.Print("Trace request processed")
 }
 
+// PutData - Add Data to CAN, respond with DataResponse
 func (s *Server) PutData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "application/json")
 	dr := data.ParseData(w, r)
@@ -223,7 +230,6 @@ func (s *Server) PutData(w http.ResponseWriter, r *http.Request) {
 			log.Fatal(err)
 		}
 
-		// log.Print(resp)
 		frwdResponse, _ := ioutil.ReadAll(resp.Body)
 		w.Write(frwdResponse)
 	}
@@ -231,6 +237,7 @@ func (s *Server) PutData(w http.ResponseWriter, r *http.Request) {
 	log.Print("Add data request processed")
 }
 
+// PatchData - Update Data in a CAN, respond with DataResponse
 func (s *Server) PatchData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "application/json")
 	dr := data.ParseData(w, r)
@@ -276,6 +283,7 @@ func (s *Server) PatchData(w http.ResponseWriter, r *http.Request) {
 	log.Print("Modify data request processed")
 }
 
+// GetData - Retrieve Data in a CAN, respond with DataResponse
 func (s *Server) GetData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "application/json")
 	key := chi.URLParam(r, "key")
@@ -321,6 +329,7 @@ func (s *Server) GetData(w http.ResponseWriter, r *http.Request) {
 	log.Print("Get data request processed")
 }
 
+// DeleteData - Remove Data from a CAN, respond with DataResponse
 func (s *Server) DeleteData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "application/json")
 	key := chi.URLParam(r, "key")
@@ -366,6 +375,7 @@ func (s *Server) DeleteData(w http.ResponseWriter, r *http.Request) {
 	log.Print("Delete data request processed")
 }
 
+// AddNeighbor - Add sender as a neighbor
 func (s *Server) AddNeighbor(w http.ResponseWriter, r *http.Request) {
 	nr := data.ParseNeighbor(w, r)
 	nHost, _ := getHostFromRemoteAddr(r.RemoteAddr)
@@ -379,28 +389,7 @@ func (s *Server) AddNeighbor(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Server) DeleteNeighbor(w http.ResponseWriter, r *http.Request) {
-	nPort := r.URL.Query().Get("port")
-	nHost, _ := getHostFromRemoteAddr(r.RemoteAddr)
-	host := Host{
-		IP:   nHost,
-		Port: nPort,
-	}
-
-	_, prs := s.Reg.Neighbors[host]
-	if !prs {
-		err := errors.New("Host does not exist in neighbor map")
-		log.Print(err)
-		dRes := &data.ErrorResponse{
-			Message: err.Error(),
-		}
-		json.NewEncoder(w).Encode(dRes)
-	} else {
-		log.Print("Deleting neighbor from map")
-		delete(s.Reg.Neighbors, host)
-	}
-}
-
+// PatchNeighbor - Update sender as a neighbor
 func (s *Server) PatchNeighbor(w http.ResponseWriter, r *http.Request) {
 	nr := data.ParseNeighbor(w, r)
 	nHost, _ := getHostFromRemoteAddr(r.RemoteAddr)
@@ -424,13 +413,43 @@ func (s *Server) PatchNeighbor(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// DeleteNeighbor - Remove sender as a neighbor
+func (s *Server) DeleteNeighbor(w http.ResponseWriter, r *http.Request) {
+	nPort := r.URL.Query().Get("port")
+	nHost, _ := getHostFromRemoteAddr(r.RemoteAddr)
+	host := Host{
+		IP:   nHost,
+		Port: nPort,
+	}
+
+	_, prs := s.Reg.Neighbors[host]
+	if !prs {
+		err := errors.New("Host does not exist in neighbor map")
+		log.Print(err)
+		dRes := &data.ErrorResponse{
+			Message: err.Error(),
+		}
+		json.NewEncoder(w).Encode(dRes)
+	} else {
+		log.Print("Deleting neighbor from map")
+		delete(s.Reg.Neighbors, host)
+	}
+}
+
+// Options - Retrieve available HTTP Options at base endpoint
 func (s *Server) Options(w http.ResponseWriter, r *http.Request) {}
+
+// JoinOptions - Retrieve available HTTP Options at join endpoint
 func (s *Server) JoinOptions(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Allow", "OPTIONS, POST")
 }
+
+// DataOptions - Retrieve available HTTP Options at data endpoint
 func (s *Server) DataOptions(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Allow", "OPTIONS, GET, DELETE, PUT, PATCH")
 }
+
+// DebugOptions - Retrieve available HTTP Options at debug endpoint
 func (s *Server) DebugOptions(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Allow", "OPTIONS, GET")
 }
