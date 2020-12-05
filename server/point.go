@@ -62,7 +62,7 @@ func (a *Point) Add(b Point) *Point {
 	return p
 }
 
-func magnitude(pt *Point) float64 {
+func (pt *Point) Magnitude() float64 {
 	sum := 0.0
 	for _, val := range pt.Coords {
 		sum += val * val
@@ -70,7 +70,7 @@ func magnitude(pt *Point) float64 {
 	return math.Sqrt(sum)
 }
 
-func scale(pt *Point, scalar float64) *Point {
+func (pt *Point) Scale(scalar float64) *Point {
 	p := new(Point)
 	array := make([]float64, len(pt.Coords))
 
@@ -82,10 +82,10 @@ func scale(pt *Point, scalar float64) *Point {
 	return p
 }
 
-func Dist(a, b Point) float64 {
-	return magnitude(a.Sub(b))
+func (a Point) Dist(b Point) float64 {
+	return a.Sub(b).Magnitude()
 }
 
-func Midpoint(a, b Point) *Point {
-	return scale(a.Add(b), 0.5)
+func (a Point) Midpoint(b Point) *Point {
+	return a.Add(b).Scale(0.5)
 }
