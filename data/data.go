@@ -23,9 +23,23 @@ func ParseJoin(w http.ResponseWriter, r *http.Request) JoinRequest {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
-	if joinReq.Host == "" {
-		joinReq.Host = r.RemoteAddr
-	}
-
 	return joinReq
+}
+
+func ParseNeighbor(w http.ResponseWriter, r *http.Request) NeighborRequest {
+	var nr NeighborRequest
+	err := json.NewDecoder(r.Body).Decode(&nr)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+	return nr
+}
+
+func ParseTrace(w http.ResponseWriter, r *http.Response) TraceResponse {
+	var tr TraceResponse
+	err := json.NewDecoder(r.Body).Decode(&tr)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+	return tr
 }
