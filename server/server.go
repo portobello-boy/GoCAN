@@ -28,25 +28,33 @@ type Server struct {
 
 // CreateServer - Create and return a server object
 func CreateServer(dim, red int, port string) *Server {
-	serv := new(Server)
-	serv.Reg = CreateRegion(dim, red)
-	serv.C = &http.Client{}
-	serv.Port = port
+	// log.Level = logrus.DebugLevel
+	serv := &Server{
+		Reg:  CreateRegion(dim, red),
+		C:    &http.Client{},
+		Port: port,
+	}
 	return serv
 }
 
 // Join - Parse JoinRequest from server attempting to join CAN
 func (s *Server) Join(w http.ResponseWriter, r *http.Request) {
-	log.Debug("Entered Join method")
+	log.Info("Entered Join method")
+
 	// Add JSON headers and parse body to appropriate type
 	w.Header().Add("Content-Type", "application/json")
 	jr := data.ParseJoin(w, r)
 	pt := HashStringToPoint(jr.Key, s.Reg.Dimension)
 
+	log.WithFields(logrus.Fields{
+		"key":   jr.Key,
+		"point": pt,
+	}).Debug("Unmarshaled JoinRequest and hashed key")
+
 	// Determine if hashed point is in this region
 	inReg, neighbor := s.Reg.Locate(pt)
 	if inReg {
-		log.Debug("Join request received, splitting region...")
+		log.Info("Join request received, splitting region...")
 		newReg, delHosts := s.Reg.Split(r.Host)
 
 		// Encode the response to JSON body and send it
@@ -90,7 +98,7 @@ func (s *Server) Join(w http.ResponseWriter, r *http.Request) {
 		log.WithFields(logrus.Fields{
 			"IP":   neighbor.IP,
 			"Port": neighbor.Port,
-		}).Info("Forwarding PutData request to neighbor")
+		}).Info("Forwarding Join request to neighbor")
 
 		body, _ := json.Marshal(jr)
 		req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("http://%s:%s/join", neighbor.IP, neighbor.Port), bytes.NewBuffer(body))
@@ -103,7 +111,7 @@ func (s *Server) Join(w http.ResponseWriter, r *http.Request) {
 		frwdResponse, _ := ioutil.ReadAll(resp.Body)
 		w.Write(frwdResponse)
 	}
-	log.Debug("Exiting Join method")
+	log.Info("Exiting Join method")
 }
 
 // SendJoin - Send a JoinRequest to entry point in CAN
@@ -126,12 +134,13 @@ func (s *Server) SendJoin(host, port, key string) {
 	jRes := data.JoinResponse{}
 	json.NewDecoder(resp.Body).Decode(&jRes)
 
-	s.Reg.Dimension = jRes.Dimension
-	s.Reg.Redundancy = jRes.Redundancy
-	s.Reg.Data = jRes.Data
-	s.Reg.Space.P1.Coords = jRes.Range.P1.Coords
-	s.Reg.Space.P2.Coords = jRes.Range.P2.Coords
-	s.Reg.Neighbors = UnpackNeighbors(jRes.Neighbors)
+	s.Reg = &Region{
+		Dimension:  jRes.Dimension,
+		Redundancy: jRes.Redundancy,
+		Space:      *UnpackRange(jRes.Range),
+		Data:       jRes.Data,
+		Neighbors:  UnpackNeighbors(jRes.Neighbors),
+	}
 
 	// Update our neighbors with our new region
 	neighborReq := &data.NeighborRequest{
@@ -172,9 +181,15 @@ func (s *Server) Debug(w http.ResponseWriter, r *http.Request) {
 
 // RouteTrace - Respond with CAN server path from entry to key location
 func (s *Server) RouteTrace(w http.ResponseWriter, r *http.Request) {
+	log.Info("Entered RouteTrace method")
 	w.Header().Add("Content-Type", "application/json")
 	dr := data.ParseData(w, r)
 	pt := HashStringToPoint(dr.Key, s.Reg.Dimension)
+
+	log.WithFields(logrus.Fields{
+		"key":   dr.Key,
+		"point": pt,
+	}).Debug("Unmarshaled DataRequest and hashed key")
 
 	// Determine if the key is in region, find neighbor if not
 	inReg, neighbor := s.Reg.Locate(pt)
@@ -189,7 +204,7 @@ func (s *Server) RouteTrace(w http.ResponseWriter, r *http.Request) {
 		log.WithFields(logrus.Fields{
 			"IP":   neighbor.IP,
 			"Port": neighbor.Port,
-		}).Info("Forwarding PutData request to neighbor")
+		}).Info("Forwarding RouteTrace request to neighbor")
 
 		body, _ := json.Marshal(dr)
 		req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("http://%s:%s/trace", neighbor.IP, neighbor.Port), bytes.NewBuffer(body))
@@ -207,7 +222,7 @@ func (s *Server) RouteTrace(w http.ResponseWriter, r *http.Request) {
 		w.Write(frwdResponse)
 	}
 
-	log.Print("Trace request processed")
+	log.Info("Exiting RouteTrace method")
 }
 
 // PutData - Add Data to CAN, respond with DataResponse
@@ -317,7 +332,6 @@ func (s *Server) PatchData(w http.ResponseWriter, r *http.Request) {
 			log.Fatal(err)
 		}
 
-		// log.Print(resp)
 		frwdResponse, _ := ioutil.ReadAll(resp.Body)
 		w.Write(frwdResponse)
 	}
@@ -327,6 +341,8 @@ func (s *Server) PatchData(w http.ResponseWriter, r *http.Request) {
 
 // GetData - Retrieve Data in a CAN, respond with DataResponse
 func (s *Server) GetData(w http.ResponseWriter, r *http.Request) {
+	log.Info("Entered GetData method")
+
 	w.Header().Add("Content-Type", "application/json")
 	key := chi.URLParam(r, "key")
 	pt := HashStringToPoint(key, s.Reg.Dimension)
@@ -372,7 +388,6 @@ func (s *Server) GetData(w http.ResponseWriter, r *http.Request) {
 			log.Fatal(err)
 		}
 
-		// log.Print(resp)
 		frwdResponse, _ := ioutil.ReadAll(resp.Body)
 		w.Write(frwdResponse)
 	}
@@ -382,6 +397,8 @@ func (s *Server) GetData(w http.ResponseWriter, r *http.Request) {
 
 // DeleteData - Remove Data from a CAN, respond with DataResponse
 func (s *Server) DeleteData(w http.ResponseWriter, r *http.Request) {
+	log.Info("Entered DeleteData method")
+
 	w.Header().Add("Content-Type", "application/json")
 	key := chi.URLParam(r, "key")
 	pt := HashStringToPoint(key, s.Reg.Dimension)
@@ -437,20 +454,33 @@ func (s *Server) DeleteData(w http.ResponseWriter, r *http.Request) {
 
 // AddNeighbor - Add sender as a neighbor
 func (s *Server) AddNeighbor(w http.ResponseWriter, r *http.Request) {
+	log.Info("Entered AddNeighbor method")
+
 	nr := data.ParseNeighbor(w, r)
 	nHost, _ := getHostFromRemoteAddr(r.RemoteAddr)
 	err := s.Reg.AddNeighbor(nHost, nr.Port, *UnpackRange(nr.Range))
+
+	log.WithFields(logrus.Fields{
+		"IP":    nHost,
+		"Port":  nr.Port,
+		"Range": *UnpackRange(nr.Range),
+	}).Info("Added neighbor to region")
+
 	if err != nil {
-		log.Print(err)
+		log.Warn(err)
 		dRes := &data.ErrorResponse{
 			Message: err.Error(),
 		}
 		json.NewEncoder(w).Encode(dRes)
 	}
+
+	log.Info("Exiting AddNeighbor method")
 }
 
 // PatchNeighbor - Update sender as a neighbor
 func (s *Server) PatchNeighbor(w http.ResponseWriter, r *http.Request) {
+	log.Info("Entered PatchNeighbor method")
+
 	nr := data.ParseNeighbor(w, r)
 	nHost, _ := getHostFromRemoteAddr(r.RemoteAddr)
 
@@ -462,19 +492,28 @@ func (s *Server) PatchNeighbor(w http.ResponseWriter, r *http.Request) {
 	_, prs := s.Reg.Neighbors[host]
 	if !prs {
 		err := errors.New("Host does not exist in neighbor map")
-		log.Print(err)
+		log.Warn(err)
 		dRes := &data.ErrorResponse{
 			Message: err.Error(),
 		}
 		json.NewEncoder(w).Encode(dRes)
 	} else {
-		log.Print("Updating range for neighbor")
 		s.Reg.Neighbors[host] = *UnpackRange(nr.Range)
+
+		log.WithFields(logrus.Fields{
+			"IP":    nHost,
+			"Port":  nr.Port,
+			"Range": *UnpackRange(nr.Range),
+		}).Info("Updated range for neighbor")
 	}
+
+	log.Info("Exiting PatchNeighbor method")
 }
 
 // DeleteNeighbor - Remove sender as a neighbor
 func (s *Server) DeleteNeighbor(w http.ResponseWriter, r *http.Request) {
+	log.Info("Entered DeleteNeighbor method")
+
 	nPort := r.URL.Query().Get("port")
 	nHost, _ := getHostFromRemoteAddr(r.RemoteAddr)
 	host := Host{
@@ -485,15 +524,21 @@ func (s *Server) DeleteNeighbor(w http.ResponseWriter, r *http.Request) {
 	_, prs := s.Reg.Neighbors[host]
 	if !prs {
 		err := errors.New("Host does not exist in neighbor map")
-		log.Print(err)
+		log.Warn(err)
 		dRes := &data.ErrorResponse{
 			Message: err.Error(),
 		}
 		json.NewEncoder(w).Encode(dRes)
 	} else {
-		log.Print("Deleting neighbor from map")
 		delete(s.Reg.Neighbors, host)
+
+		log.WithFields(logrus.Fields{
+			"IP":   nHost,
+			"Port": nPort,
+		}).Info("Deleted neighbor")
 	}
+
+	log.Info("Exiting DeleteNeighbor method")
 }
 
 // Options - Retrieve available HTTP Options at base endpoint
