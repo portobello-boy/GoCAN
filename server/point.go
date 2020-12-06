@@ -6,23 +6,28 @@ import (
 	"strconv"
 )
 
+// Point - Contains an array of d coordinates for a point in d-dimensional space
 type Point struct {
 	Coords []float64
 }
 
-func (p *Point) Copy() *Point {
-	newP := new(Point)
-	newP.Coords = make([]float64, len(p.Coords))
-	copy(newP.Coords, p.Coords)
+// Copy - Duplicate a point
+func (pt *Point) Copy() *Point {
+	newP := &Point{
+		Coords: make([]float64, len(pt.Coords)),
+	}
+	copy(newP.Coords, pt.Coords)
 	return newP
 }
 
+// hash - Take a string and hash it to a float64 value
 func hash(s string) float64 {
 	h := fnv.New64()
 	h.Write([]byte(s))
 	return float64(float64(h.Sum64()) / math.MaxUint64)
 }
 
+// HashStringToPoint - Hash a string into a d-dimensional point
 func HashStringToPoint(key string, dim int) Point {
 	array := make([]float64, dim)
 	point := new(Point)
@@ -38,11 +43,12 @@ func HashStringToPoint(key string, dim int) Point {
 	return *point
 }
 
-func (a *Point) Sub(b Point) *Point {
+// Sub - Subtract point a from point b, return a new point
+func (pt *Point) Sub(b Point) *Point {
 	p := new(Point)
-	array := make([]float64, len(a.Coords))
+	array := make([]float64, len(pt.Coords))
 
-	for i, val := range a.Coords {
+	for i, val := range pt.Coords {
 		array[i] = val - b.Coords[i]
 	}
 	p.Coords = array
@@ -50,11 +56,12 @@ func (a *Point) Sub(b Point) *Point {
 	return p
 }
 
-func (a *Point) Add(b Point) *Point {
+// Add - Add point a to point b, return a new point
+func (pt *Point) Add(b Point) *Point {
 	p := new(Point)
-	array := make([]float64, len(a.Coords))
+	array := make([]float64, len(pt.Coords))
 
-	for i, val := range a.Coords {
+	for i, val := range pt.Coords {
 		array[i] = val + b.Coords[i]
 	}
 	p.Coords = array
@@ -62,6 +69,7 @@ func (a *Point) Add(b Point) *Point {
 	return p
 }
 
+// Magnitude - Return the magnitude of a point relative to the origin
 func (pt *Point) Magnitude() float64 {
 	sum := 0.0
 	for _, val := range pt.Coords {
@@ -70,6 +78,7 @@ func (pt *Point) Magnitude() float64 {
 	return math.Sqrt(sum)
 }
 
+// Scale - Scale a point by a given scalar, return a new point
 func (pt *Point) Scale(scalar float64) *Point {
 	p := new(Point)
 	array := make([]float64, len(pt.Coords))
@@ -82,10 +91,12 @@ func (pt *Point) Scale(scalar float64) *Point {
 	return p
 }
 
-func (a *Point) Dist(b Point) float64 {
-	return a.Sub(b).Magnitude()
+// Dist - Return the distance between two points
+func (pt *Point) Dist(b Point) float64 {
+	return pt.Sub(b).Magnitude()
 }
 
-func (a *Point) Midpoint(b Point) *Point {
-	return a.Add(b).Scale(0.5)
+// Midpoint - Find the midpoint between two points
+func (pt *Point) Midpoint(b Point) *Point {
+	return pt.Add(b).Scale(0.5)
 }

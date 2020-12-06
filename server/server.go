@@ -64,7 +64,7 @@ func (s *Server) Join(w http.ResponseWriter, r *http.Request) {
 		body, _ := json.Marshal(neighborReq)
 
 		// Request existing neighbors to update my range in their map
-		for hst, _ := range s.Reg.Neighbors {
+		for hst := range s.Reg.Neighbors {
 			req, _ := http.NewRequest(http.MethodPatch, fmt.Sprintf("http://%s:%s/neighbors", hst.IP, hst.Port), bytes.NewBuffer(body))
 			_, err := s.C.Do(req)
 			if err != nil {
