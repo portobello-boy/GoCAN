@@ -4,14 +4,16 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
-	"log"
 	"main/server"
 	"net/http"
 	"os"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
+	"github.com/sirupsen/logrus"
 )
+
+var log = logrus.New()
 
 func main() {
 	dimFlag := flag.Int("d", 2, "Number of dimensions for this CAN server")

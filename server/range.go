@@ -125,10 +125,9 @@ func (r *Range) Neighbors(other *Range) bool {
 
 // UnpackRange - Unmarshal a RangeResponse into a range
 func UnpackRange(rr data.RangeResponse) *Range {
-	r := new(Range)
-	r.P1 = *new(Point)
-	r.P1.Coords = rr.P1.Coords
-	r.P2 = *new(Point)
-	r.P2.Coords = rr.P2.Coords
+	r := &Range{
+		P1: Point{rr.P1.Coords},
+		P2: Point{rr.P2.Coords},
+	}
 	return r
 }

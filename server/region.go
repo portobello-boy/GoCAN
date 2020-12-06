@@ -55,9 +55,10 @@ func UnpackNeighbors(neighMap map[string]data.RangeResponse) map[Host]Range {
 
 	for hst, rng := range neighMap {
 		hostInfo := strings.Split(hst, ":")
-		host := new(Host)
-		host.IP = hostInfo[0]
-		host.Port = hostInfo[1]
+		host := &Host{
+			IP:   hostInfo[0],
+			Port: hostInfo[1],
+		}
 		hostMap[*host] = *UnpackRange(rng)
 	}
 
