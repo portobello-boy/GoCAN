@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
+
 	"net/http"
 	"regexp"
 	"strings"
@@ -14,7 +14,10 @@ import (
 	"main/data"
 
 	"github.com/go-chi/chi"
+	"github.com/sirupsen/logrus"
 )
+
+var log = logrus.New()
 
 // Server - Object containing a region, HTTP client, and listening port
 type Server struct {
@@ -34,6 +37,7 @@ func CreateServer(dim, red int, port string) *Server {
 
 // Join - Parse JoinRequest from server attempting to join CAN
 func (s *Server) Join(w http.ResponseWriter, r *http.Request) {
+	log.Debug("Entered Join method")
 	// Add JSON headers and parse body to appropriate type
 	w.Header().Add("Content-Type", "application/json")
 	jr := data.ParseJoin(w, r)
@@ -42,7 +46,7 @@ func (s *Server) Join(w http.ResponseWriter, r *http.Request) {
 	// Determine if hashed point is in this region
 	inReg, neighbor := s.Reg.Locate(pt)
 	if inReg {
-		log.Print("Join request received, splitting region...")
+		log.Debug("Join request received, splitting region...")
 		newReg, delHosts := s.Reg.Split(r.Host)
 
 		// Encode the response to JSON body and send it
@@ -83,7 +87,11 @@ func (s *Server) Join(w http.ResponseWriter, r *http.Request) {
 
 	} else {
 		// Forward join request to best neighbor
-		log.Print("Forwarding join request to ", neighbor.IP, ":", neighbor.Port)
+		log.WithFields(logrus.Fields{
+			"IP":   neighbor.IP,
+			"Port": neighbor.Port,
+		}).Info("Forwarding PutData request to neighbor")
+
 		body, _ := json.Marshal(jr)
 		req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("http://%s:%s/join", neighbor.IP, neighbor.Port), bytes.NewBuffer(body))
 
@@ -95,6 +103,7 @@ func (s *Server) Join(w http.ResponseWriter, r *http.Request) {
 		frwdResponse, _ := ioutil.ReadAll(resp.Body)
 		w.Write(frwdResponse)
 	}
+	log.Debug("Exiting Join method")
 }
 
 // SendJoin - Send a JoinRequest to entry point in CAN
@@ -144,6 +153,7 @@ func (s *Server) SendJoin(host, port, key string) {
 
 // Debug - Send a DebugResponse with information about this server in the CAN
 func (s *Server) Debug(w http.ResponseWriter, r *http.Request) {
+	log.Info("Entered Debug method")
 	w.Header().Add("Content-Type", "application/json")
 
 	dRes := &data.DebugResponse{
@@ -153,7 +163,11 @@ func (s *Server) Debug(w http.ResponseWriter, r *http.Request) {
 		Neighbors:  s.Reg.GetNeighborResponse(),
 		Data:       s.Reg.Data,
 	}
+
+	log.Info("Sending Debug response")
 	json.NewEncoder(w).Encode(dRes)
+
+	log.Info("Exiting Debug method")
 }
 
 // RouteTrace - Respond with CAN server path from entry to key location
@@ -172,7 +186,11 @@ func (s *Server) RouteTrace(w http.ResponseWriter, r *http.Request) {
 		}
 		json.NewEncoder(w).Encode(tRes)
 	} else { // Forward the trace request to the appropriate neighbor
-		log.Print("Forwarding trace request to ", neighbor.IP, ":", neighbor.Port)
+		log.WithFields(logrus.Fields{
+			"IP":   neighbor.IP,
+			"Port": neighbor.Port,
+		}).Info("Forwarding PutData request to neighbor")
+
 		body, _ := json.Marshal(dr)
 		req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("http://%s:%s/trace", neighbor.IP, neighbor.Port), bytes.NewBuffer(body))
 
@@ -194,19 +212,27 @@ func (s *Server) RouteTrace(w http.ResponseWriter, r *http.Request) {
 
 // PutData - Add Data to CAN, respond with DataResponse
 func (s *Server) PutData(w http.ResponseWriter, r *http.Request) {
+	log.Info("Entered PutData method")
+
 	w.Header().Add("Content-Type", "application/json")
 	dr := data.ParseData(w, r)
 	pt := HashStringToPoint(dr.Key, s.Reg.Dimension)
 
+	log.WithFields(logrus.Fields{
+		"key":   dr.Key,
+		"val":   dr.Data,
+		"point": pt,
+	}).Debug("Unmarshaled DataRequest and hashed key")
+
 	// Determine if the key is in region, find neighbor if not
 	inReg, neighbor := s.Reg.Locate(pt)
 	if inReg {
-		log.Print("Processing add data request")
+		log.Debug("Processing PutData request")
 		added, err := s.Reg.AddData(pt, dr.Key, dr.Data) // Add to this region
 
 		// Send success/failure message
 		if err != nil {
-			log.Print(err)
+			log.Warn(err)
 			dRes := &data.ErrorResponse{
 				Message: err.Error(),
 			}
@@ -221,7 +247,11 @@ func (s *Server) PutData(w http.ResponseWriter, r *http.Request) {
 			json.NewEncoder(w).Encode(dRes)
 		}
 	} else { // Forward the put request to the appropriate neighbor
-		log.Print("Forwarding add request to ", neighbor.IP, ":", neighbor.Port)
+		log.WithFields(logrus.Fields{
+			"IP":   neighbor.IP,
+			"Port": neighbor.Port,
+		}).Info("Forwarding PutData request to neighbor")
+
 		body, _ := json.Marshal(dr)
 		req, err := http.NewRequest(http.MethodPut, fmt.Sprintf("http://%s:%s/data", neighbor.IP, neighbor.Port), bytes.NewBuffer(body))
 
@@ -234,24 +264,32 @@ func (s *Server) PutData(w http.ResponseWriter, r *http.Request) {
 		w.Write(frwdResponse)
 	}
 
-	log.Print("Add data request processed")
+	log.Info("Exiting PutData method")
 }
 
 // PatchData - Update Data in a CAN, respond with DataResponse
 func (s *Server) PatchData(w http.ResponseWriter, r *http.Request) {
+	log.Info("Entered PatchData method")
+
 	w.Header().Add("Content-Type", "application/json")
 	dr := data.ParseData(w, r)
 	pt := HashStringToPoint(dr.Key, s.Reg.Dimension)
 
+	log.WithFields(logrus.Fields{
+		"key":   dr.Key,
+		"val":   dr.Data,
+		"point": pt,
+	}).Debug("Unmarshaled DataRequest and hashed key")
+
 	// Determine if the key is in region, find neighbor if not
 	inReg, neighbor := s.Reg.Locate(pt)
 	if inReg {
-		log.Print("Processing Modify data request")
+		log.Debug("Processing PatchData request")
 		added, err := s.Reg.ModifyData(pt, dr.Key, dr.Data) // Add to this region
 
 		// Send success/failure message
 		if err != nil {
-			log.Print(err)
+			log.Warn(err)
 			dRes := &data.ErrorResponse{
 				Message: err.Error(),
 			}
@@ -266,7 +304,11 @@ func (s *Server) PatchData(w http.ResponseWriter, r *http.Request) {
 			json.NewEncoder(w).Encode(dRes)
 		}
 	} else { // Forward the put request to the appropriate neighbor
-		log.Print("Forwarding patch request to ", neighbor.IP, ":", neighbor.Port)
+		log.WithFields(logrus.Fields{
+			"IP":   neighbor.IP,
+			"Port": neighbor.Port,
+		}).Info("Forwarding PatchData request to neighbor")
+
 		body, _ := json.Marshal(dr)
 		req, err := http.NewRequest(http.MethodPatch, fmt.Sprintf("http://%s:%s/data", neighbor.IP, neighbor.Port), bytes.NewBuffer(body))
 
@@ -280,7 +322,7 @@ func (s *Server) PatchData(w http.ResponseWriter, r *http.Request) {
 		w.Write(frwdResponse)
 	}
 
-	log.Print("Modify data request processed")
+	log.Info("Exiting PatchData method")
 }
 
 // GetData - Retrieve Data in a CAN, respond with DataResponse
@@ -289,15 +331,20 @@ func (s *Server) GetData(w http.ResponseWriter, r *http.Request) {
 	key := chi.URLParam(r, "key")
 	pt := HashStringToPoint(key, s.Reg.Dimension)
 
+	log.WithFields(logrus.Fields{
+		"key":   key,
+		"point": pt,
+	}).Debug("Unmarshaled DataRequest and hashed key")
+
 	// Determine if the key is in region, find neighbor if not
 	inReg, neighbor := s.Reg.Locate(pt)
 	if inReg {
-		log.Print("Processing data retrieval request")
+		log.Debug("Processing GetData request")
 		got, datum, err := s.Reg.GetData(pt, key)
 
 		// Send success/failure message
 		if err != nil {
-			log.Print(err)
+			log.Warn(err)
 			dRes := &data.ErrorResponse{
 				Message: err.Error(),
 			}
@@ -313,7 +360,11 @@ func (s *Server) GetData(w http.ResponseWriter, r *http.Request) {
 		}
 
 	} else { // Forward the get request to the appropriate neighbor
-		log.Print("Forwarding get request to ", neighbor.IP, ":", neighbor.Port)
+		log.WithFields(logrus.Fields{
+			"IP":   neighbor.IP,
+			"Port": neighbor.Port,
+		}).Info("Forwarding GetData request to neighbor")
+
 		req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://%s:%s/data/%s", neighbor.IP, neighbor.Port, key), nil)
 
 		resp, err := s.C.Do(req)
@@ -326,7 +377,7 @@ func (s *Server) GetData(w http.ResponseWriter, r *http.Request) {
 		w.Write(frwdResponse)
 	}
 
-	log.Print("Get data request processed")
+	log.Info("Exiting GetData method")
 }
 
 // DeleteData - Remove Data from a CAN, respond with DataResponse
@@ -335,15 +386,20 @@ func (s *Server) DeleteData(w http.ResponseWriter, r *http.Request) {
 	key := chi.URLParam(r, "key")
 	pt := HashStringToPoint(key, s.Reg.Dimension)
 
+	log.WithFields(logrus.Fields{
+		"key":   key,
+		"point": pt,
+	}).Debug("Unmarshaled DataRequest and hashed key")
+
 	// Determine if the key is in region, find neighbor if not
 	inReg, neighbor := s.Reg.Locate(pt)
 	if inReg {
-		log.Print("Processing data delete request")
+		log.Debug("Processing DeleteData request")
 		deleted, datum, err := s.Reg.DeleteData(pt, key)
 
 		// Send success/failure message
 		if err != nil {
-			log.Print(err)
+			log.Warn(err)
 			dRes := &data.ErrorResponse{
 				Message: err.Error(),
 			}
@@ -359,7 +415,11 @@ func (s *Server) DeleteData(w http.ResponseWriter, r *http.Request) {
 		}
 
 	} else { // Forward the get request to the appropriate neighbor
-		log.Print("Forwarding get request to ", neighbor.IP, ":", neighbor.Port)
+		log.WithFields(logrus.Fields{
+			"IP":   neighbor.IP,
+			"Port": neighbor.Port,
+		}).Info("Forwarding DeleteData request to neighbor")
+
 		req, err := http.NewRequest(http.MethodDelete, fmt.Sprintf("http://%s:%s/data/%s", neighbor.IP, neighbor.Port, key), nil)
 
 		resp, err := s.C.Do(req)
@@ -372,7 +432,7 @@ func (s *Server) DeleteData(w http.ResponseWriter, r *http.Request) {
 		w.Write(frwdResponse)
 	}
 
-	log.Print("Delete data request processed")
+	log.Info("Exiting DeleteData method")
 }
 
 // AddNeighbor - Add sender as a neighbor

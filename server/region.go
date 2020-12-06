@@ -2,7 +2,6 @@ package server
 
 import (
 	"errors"
-	"log"
 	"main/data"
 	"math"
 	"strings"
@@ -75,7 +74,6 @@ func (r *Region) DeleteData(pt Point, key string) (bool, string, error) {
 	// Locate and remove the key if it exists, otherwise return error
 	datum, prs := r.Data[key]
 	delete(r.Data, key)
-	log.Print("Key:", key, ", Found:", prs)
 	if prs {
 		return true, datum, nil
 	}
@@ -92,7 +90,6 @@ func (r *Region) GetData(pt Point, key string) (bool, string, error) {
 
 	// Find the key if it exists in this region, otherwise return error
 	datum, prs := r.Data[key]
-	log.Print("Key:", key, ", Data:", datum)
 	if prs {
 		return true, datum, nil
 	}
@@ -176,7 +173,6 @@ func (r *Region) findNearestNeighbor(pt Point) *Host {
 		}
 	}
 
-	log.Print("Best Host: ", bestHost)
 	return bestHost
 }
 
@@ -192,7 +188,6 @@ func (r *Region) AddNeighbor(hostname, port string, rng Range) error {
 		return errors.New("Neighbor already exists in map")
 	}
 
-	log.Print("Neighbor added to map")
 	r.Neighbors[host] = rng
 	return nil
 }
